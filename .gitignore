@@ -1,0 +1,6 @@
+node_modules/
+.env
+*.log
+.DS_Store
+# Keep build/ for local development, but we'll deploy docs/ to GitHub Pages
+
