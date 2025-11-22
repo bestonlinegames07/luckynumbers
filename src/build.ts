@@ -517,6 +517,24 @@ async function build() {
     // Create directories
     await fs.mkdir(path.join(buildDir, 'css'), { recursive: true });
     await fs.mkdir(path.join(buildDir, 'js'), { recursive: true });
+    await fs.mkdir(path.join(buildDir, 'images'), { recursive: true });
+    
+    // Copy images from root images/ folder to build/images/
+    const imagesDir = path.join(rootDir, 'images');
+    try {
+      const imageFiles = await fs.readdir(imagesDir);
+      for (const file of imageFiles) {
+        if (file.endsWith('.png')) {
+          await fs.copyFile(
+            path.join(imagesDir, file),
+            path.join(buildDir, 'images', file)
+          );
+        }
+      }
+      console.log('✅ Images copied to build folder');
+    } catch (error: any) {
+      console.log('⚠️  No images folder found, skipping image copy');
+    }
     
     // Generate CSS (will be processed by Tailwind)
     console.log('\n🎨 Generating CSS...');
