@@ -48,6 +48,8 @@ async function deploy() {
     // Create .nojekyll file to prevent Jekyll processing
     await fs.writeFile(path.join(docsDir, '.nojekyll'), '');
     
+    console.log('✅ Images and all files copied to docs/');
+    
     console.log('✅ Deployment files ready in docs/ folder');
     console.log('\n📝 Next steps:');
     console.log('   1. git add docs/');

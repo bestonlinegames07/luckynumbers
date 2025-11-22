@@ -6,6 +6,7 @@
  */
 
 import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -13,6 +14,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const buildDir = path.join(rootDir, 'build');
+
+// Helper function to check if file exists
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Load content
 let contentData: any;
@@ -139,6 +150,12 @@ async function buildHomepage() {
   const featured = posts[0];
   const recent = posts.slice(1, 4);
   
+  // Check if images exist
+  const featuredImageExists = featured ? await fileExists(path.join(buildDir, 'images', `${featured.slug}.png`)) : false;
+  const recentImageChecks = await Promise.all(
+    recent.map((post: any) => fileExists(path.join(buildDir, 'images', `${post.slug}.png`)))
+  );
+  
   const content = `
     <!-- Hero Section -->
     <section class="relative overflow-hidden pt-20 pb-32">
@@ -171,9 +188,11 @@ async function buildHomepage() {
         <a href="blog/${featured.slug}.html" class="block">
           <div class="md:flex">
             <div class="md:w-1/2">
-              <div class="aspect-video bg-gradient-to-br from-mystical-400 to-primary-400 flex items-center justify-center">
-                <span class="text-white text-6xl font-bold">${featured.title.charAt(0)}</span>
-              </div>
+              ${featuredImageExists 
+                ? `<img src="images/${featured.slug}.png" alt="${featured.title}" class="w-full h-full object-cover aspect-video">`
+                : `<div class="aspect-video bg-gradient-to-br from-mystical-400 to-primary-400 flex items-center justify-center">
+                    <span class="text-white text-6xl font-bold">${featured.title.charAt(0)}</span>
+                  </div>`}
             </div>
             <div class="md:w-1/2 p-8 md:p-12">
               <div class="flex gap-4 text-sm text-slate-500 mb-4">
@@ -207,11 +226,13 @@ async function buildHomepage() {
       </div>
       
       <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-        ${recent.map((post: any) => `
+        ${recent.map((post: any, index: number) => `
           <a href="blog/${post.slug}.html" class="group bg-white rounded-xl shadow-md hover:shadow-2xl transition-all overflow-hidden border border-slate-100 transform hover:-translate-y-2">
-            <div class="aspect-video bg-gradient-to-br from-mystical-300 to-primary-300 flex items-center justify-center">
-              <span class="text-white text-4xl font-bold opacity-80">${post.title.charAt(0)}</span>
-            </div>
+            ${recentImageChecks[index]
+              ? `<img src="images/${post.slug}.png" alt="${post.title}" class="w-full aspect-video object-cover">`
+              : `<div class="aspect-video bg-gradient-to-br from-mystical-300 to-primary-300 flex items-center justify-center">
+                  <span class="text-white text-4xl font-bold opacity-80">${post.title.charAt(0)}</span>
+                </div>`}
             <div class="p-6">
               <div class="flex gap-3 text-xs text-slate-500 mb-3">
                 <span>${post.date}</span>
@@ -253,6 +274,11 @@ async function buildBlogIndex() {
   
   const posts = contentData.posts || [];
   
+  // Check if images exist
+  const imageChecks = await Promise.all(
+    posts.map((post: any) => fileExists(path.join(buildDir, 'images', `${post.slug}.png`)))
+  );
+  
   const content = `
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
       <div class="text-center mb-16">
@@ -265,11 +291,13 @@ async function buildBlogIndex() {
       </div>
 
       <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-        ${posts.map((post: any) => `
+        ${posts.map((post: any, index: number) => `
           <a href="${post.slug}.html" class="group bg-white rounded-xl shadow-md hover:shadow-2xl transition-all overflow-hidden border border-slate-100 transform hover:-translate-y-2">
-            <div class="aspect-video bg-gradient-to-br from-mystical-300 to-primary-300 flex items-center justify-center">
-              <span class="text-white text-4xl font-bold opacity-80">${post.title.charAt(0)}</span>
-            </div>
+            ${imageChecks[index]
+              ? `<img src="../images/${post.slug}.png" alt="${post.title}" class="w-full aspect-video object-cover">`
+              : `<div class="aspect-video bg-gradient-to-br from-mystical-300 to-primary-300 flex items-center justify-center">
+                  <span class="text-white text-4xl font-bold opacity-80">${post.title.charAt(0)}</span>
+                </div>`}
             <div class="p-6">
               <div class="flex gap-3 text-xs text-slate-500 mb-3">
                 <span>${post.date}</span>
@@ -326,6 +354,10 @@ async function buildBlogPosts() {
       }
     });
     
+    // Check if images exist (before template string)
+    const postImageExists = await fileExists(path.join(buildDir, 'images', `${post.slug}.png`));
+    const authorImageExists = await fileExists(path.join(buildDir, 'images', 'author.png'));
+    
     const content = `
       <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div class="bg-white rounded-2xl shadow-lg p-8 md:p-12">
@@ -340,15 +372,21 @@ async function buildBlogPosts() {
             </h1>
           </div>
           
+          ${postImageExists
+            ? `<img src="../images/${post.slug}.png" alt="${post.title}" class="w-full rounded-xl mb-8 aspect-video object-cover">`
+            : ''}
+          
           <div class="prose prose-lg max-w-none prose-headings:text-slate-800 prose-p:text-slate-700 prose-a:text-mystical-600 prose-strong:text-slate-800 prose-ul:text-slate-700 prose-li:text-slate-700">
             ${cleanedContent}
           </div>
           
           <div class="mt-12 pt-8 border-t border-slate-200">
             <div class="flex items-center gap-4">
-              <div class="w-16 h-16 rounded-full bg-gradient-to-br from-mystical-400 to-primary-400 flex items-center justify-center text-white text-2xl font-bold">
-                ${contentData.site.author.name.charAt(0)}
-              </div>
+              ${authorImageExists
+                ? `<img src="../images/author.png" alt="${contentData.site.author.name}" class="w-16 h-16 rounded-full object-cover">`
+                : `<div class="w-16 h-16 rounded-full bg-gradient-to-br from-mystical-400 to-primary-400 flex items-center justify-center text-white text-2xl font-bold">
+                    ${contentData.site.author.name.charAt(0)}
+                  </div>`}
               <div>
                 <h3 class="font-bold text-slate-800">${contentData.site.author.name}</h3>
                 <p class="text-sm text-slate-600">${contentData.site.author.role}</p>
